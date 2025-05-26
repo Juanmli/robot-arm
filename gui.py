@@ -156,10 +156,7 @@ class App(tk.Tk):
         day=fecha.day,
         hour=int(hora),
         minute=int(minuto)
-        )
-        #timestamp = fecha_completa.timestamp()
-
-        #return fecha_completa.strftime("%m/%d/%Y %H:%M:%S")
+        )        
         return fecha_completa
 
 
