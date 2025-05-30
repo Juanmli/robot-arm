@@ -1,0 +1,131 @@
+from matplotlib.figure import Figure
+from analisis import crear_dataframes
+import matplotlib.dates as mdates
+import pandas as pd
+import random
+
+max_xticks = 5
+
+def crear_graficos(filtros):
+
+    start = pd.to_datetime(filtros['tiempo_inicial'])
+    end = pd.to_datetime(filtros['tiempo_final']) 
+
+    print("Creando figura")
+    fig = Figure(figsize=(12,6))
+    #crear_dataframes devuelve un diccionario con el nombre del dataframe como clave, y el 
+    #propio df como valor. 
+    dataframes = crear_dataframes(filtros)     
+    i = 0 
+    n = len(dataframes.items())
+    for nombre, dataframe in dataframes.items():        
+        
+        dataframes[nombre] = dataframes[nombre] [
+            (dataframe.index <= end)  & (dataframe.index >= start)
+        ]
+
+    for nombre, dataframe in dataframes.items():
+    
+        if i==0:                
+            ax = fig.add_subplot(n, 1, i+1)
+            first_ax = ax
+        else:
+            ax = fig.add_subplot(n, 1, i+1, sharex=first_ax)      
+      
+      # Para cada tipo de filtro, el tipo de gráfico puede variar.
+        print("dataframes filtrados**************************************************")
+        if (nombre == 'productivity'):            
+            graficar_productividad(ax,dataframe,filtros)
+            print(dataframe)
+          
+        elif(nombre == 'errors'):
+            graficar_errores(ax,dataframe,filtros)
+            print(dataframe)
+        elif(nombre == 'modes'):
+            graficar_modes(ax,dataframe,filtros)
+            print(dataframe)
+        elif nombre == "programs":
+            graficar_programs(ax,dataframe,filtros)    
+            print(dataframe)
+            print("******************************************************************************************")
+        ax.set_ylabel(nombre) 
+        #Solo el último gráfico tiene xtick
+        if i < n - 1:
+            ax.tick_params(labelbottom=False)
+        i+=1
+    print("Figura creada")
+     
+    return fig
+
+
+
+def graficar_productividad(ax,dataframe, filtros):
+    print('graficando productividad')
+    if filtros['time_filter'] == 'hora':            
+        ax.step(dataframe.index, dataframe["message"], where="post")
+        ax.set_yticks([0, 1, 2, 3])
+        ax.set_yticklabels(["Stop", "Free", "Reset", "Active"])
+    else:                                
+        bars=ax.bar(dataframe.index, dataframe["tiempo"]/3600 )
+        if len(dataframe.index)<= max_xticks:
+            ax.bar_label(bars, fmt="%.1f", padding=3)
+
+
+def graficar_errores(ax,dataframe, filtros):
+    print('graficando errores')
+    if filtros["time_filter"] == "hora":
+        ax.eventplot(dataframe.index)
+    else:
+        bars = ax.bar(dataframe.index, dataframe['amount'],edgecolor='white',linewidth = 0.7)
+        if len(dataframe.index)<= max_xticks:
+            ax.bar_label(bars, fmt="%.1f", padding=3)           
+
+
+def graficar_modes(ax,dataframe,filtros):
+    print('graficando modos')
+    print(dataframe)
+    if filtros["time_filter"] == "hora":
+        ax.step(dataframe.index, dataframe["message_mapped"], where="post")
+        print(dataframe.index)
+        codes=[]
+        messages=[]
+        for j in range(len(dataframe.index)):
+            code = dataframe.iloc[j]["message_mapped"]
+            message = dataframe.iloc[j]["message"]
+            if ":" in message :
+                message = message.split(":")[1]
+            if code not in codes:
+                codes.append(code)
+                messages.append(message)
+
+        ax.set_yticks(codes)
+        ax.set_yticklabels(messages)
+    else:
+        bars = ax.bar(dataframe.index, dataframe['amount'],edgecolor='white',linewidth = 0.7, grid =True)
+        if len(dataframe.index)<= max_xticks:
+            ax.bar_label(bars, fmt="%.1f", padding=3)         
+
+def graficar_programs(ax,dataframe,filtros):  
+    print('graficando programas')  
+    if filtros["time_filter"] == "hora":
+        programs_dict = dict()
+        i = 0
+        while i < len(dataframe.index):
+            row = dataframe.iloc[i]
+            if row["name"] not in programs_dict.keys():
+                programs_dict[row["name"]] = list([(row["start"], row["duration"])])
+            else:                   
+                programs_dict[row["name"]].append((row["start"],row["duration"]))
+            i +=1
+        
+        i = 0
+        for programa,actividad in programs_dict.items():
+            color_hex = "#{:06x}".format(random.randint(0, 0xFFFFFF))
+            ax.broken_barh(actividad,(i-0.5,1), color=color_hex)
+            ax.set_yticks(range(len(programs_dict.keys())), labels =programs_dict.keys())
+            ax.invert_yaxis()
+            i += 1
+
+
+
+

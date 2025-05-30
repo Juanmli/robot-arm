@@ -1,117 +1,252 @@
 import pandas as pd
-from matplotlib.figure import Figure
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import openpyxl
+
+
 
 #Se crea un diccionario con los nombres de los archivos como valor. 
 CARPETA_CSV = "data"
 ARCHIVOS = {
+    "programs": "programs.csv",
     "errors": "errors.csv",
-    "modes": "modes.csv",
     "productivity": "productivity.csv",
-    "programs": "programs.csv"
+    "modes": "modes.csv",
 }
+sample:dict = {
+    'hora':'h',
+    'diario': 'D',
+    'mensual': 'm',
+    'anual' : 'Y'
+}  
 
 # Cargar archivos CSV con estructura (timestamp, mensaje)
-def cargar_csv(nombre_archivo,start, end):
-    #crea una dirección absouluta / ... /CARPETA_CSV/archivo.csv
-    path = os.path.join(CARPETA_CSV, nombre_archivo)
-    #Crea un df del archivo nombre_archivo y nombra los campos como timestamp y message
+def cargar_csv(nombre_archivo): 
+    path = os.path.join(CARPETA_CSV, nombre_archivo)  
     df = pd.read_csv(path,header=None, names=["timestamp", "message"], on_bad_lines='skip')
-    #formatea los timestamps
     df["timestamp"] = pd.to_datetime(df["timestamp"], format="%m/%d/%Y %I:%M:%S %p", errors="coerce")
-    #Crea un campo 'date' con la fecha de cada timestamp. 
     df['date'] = df['timestamp'].dt.date
-    df = df[(df['timestamp']>= start) & (df['timestamp'] <=end)]
+    
     return df
 
 
-def generar_dfs(start,end):
-    # === ERRORES ===
-    df_errors = cargar_csv(ARCHIVOS["errors"],start,end)
-    errores_por_dia = df_errors.groupby('date').size().rename("Err")
+def crear_dataframes(filtros):
 
-    # === MODOS ===
-    df_modes = cargar_csv(ARCHIVOS["modes"],start,end)
-    df_aut = df_modes[df_modes["message"].str.contains("#AUT", na=False)]
-    aut_por_dia = df_aut.groupby('date').size().rename("Modifiche a #AUT")
+    start = filtros['tiempo_inicial']
+    end = filtros['tiempo_final'] 
+    
+    dataframes:dict = {}    
 
-    # === PROGRAMS ===
-    df_programs = cargar_csv(ARCHIVOS["programs"],start,end)
-    inicios = df_programs[df_programs["message"].str.startswith("Starting program")]
-    programas_por_dia = inicios.groupby('date').size().rename("Programmi avviati")
+    for clave,valor in ARCHIVOS.items():
+        if filtros[clave] == True:
+            dataframes[clave] = cargar_csv(valor) 
+            dataframes[clave].set_index("timestamp", inplace=True)            
+            dataframes[clave].index = pd.to_datetime(dataframes[clave].index)
+        
+            
 
-    # === PRODUCTIVIDAD ===
-    df_prod = cargar_csv(ARCHIVOS["productivity"],start,end)
-    df_prod = df_prod.sort_values("timestamp").reset_index(drop=True)   
+    for nombre, dataframe in dataframes.items():
+        if nombre == 'errors':                        
+            dataframes[nombre] = analizar_errores(dataframe, filtros)
+        elif nombre == 'modes':
+            dataframes[nombre] = analizar_modes(dataframe, filtros)
+        elif nombre == 'productivity':
+            dataframes[nombre] = analizar_productividad(dataframe, filtros)
+        else:#nombre == 'programs'
+            dataframes[nombre] = analizar_programas(dataframe, filtros)
 
+    return dataframes
+
+def analizar_errores(dataframe,filtros):#TODO
+    print('analizando errores')
+    tiempo_filtro = filtros['time_filter']
+    if tiempo_filtro == "hora":
+        df = dataframe
+    else:
+        df = dataframe.resample(sample[tiempo_filtro]).size().rename('amount').to_frame()
+    print("listo")
+    return df
+    
+
+def analizar_modes(dataframe,filtros):
+    print("analizando modos")
+    tiempo_filtro = filtros['time_filter']
+    if tiempo_filtro == "hora":
+        messages = []
+        for i in range(len(dataframe.index)):
+            message = dataframe.iloc[i]["message"]
+            if message not in messages:
+                messages.append(message)      
+
+
+        messages_dict_map = dict()
+        for i in range(len(messages)):
+            messages_dict_map[messages[i]] = i
+         
+        dataframe['message_mapped'] = dataframe['message'].copy().map(messages_dict_map)
+    
+    else:
+        dataframe= dataframe.resample(sample[tiempo_filtro]).size().rename('amount').to_frame()
+    print("listo")
+    return dataframe
+   
+
+def analizar_productividad(dataframe,filtros):#TODO
+    print("analizando_productividad")
+    tiempo_filtro = filtros['time_filter']
+    if filtros['time_filter']=='hora':
+            dataframe['message']=dataframe['message'].map(
+                {'Program state changed to: Active':3,
+                'Program state changed to: Reset':2,
+                'Program state changed to: Free':1,
+                'Program state changed to: Stop':0             
+                }
+            )
+    else:
+        dataframe = calcular_tiempo_activo(dataframe,filtros)
+    print("listo")
+    return dataframe
+   
+
+def analizar_programas(dataframe,filtros):#TODO
+    print("analizando programas")
+    tiempo_filtro = filtros['time_filter']
+    
+    if tiempo_filtro == "hora":       
+
+        #Se crea un df que contiene:
+        '''
+        Start = un timestamp de inicio de un programa
+        Name = el nombre del programa sin path ni extensión
+        Duration = la cantidad de segundos que estuvo activo el programa      
+        
+        '''
+
+        tiempos = []
+        i = 0
+        while i < len(dataframe.index):
+            row = dataframe.iloc[i]
+            if "Starting" in row["message"]:               
+                start = row.name
+                #print(f"programa iniciado en {start}")
+                j = i + 1 
+                while j < len(dataframe.index):
+                    message = dataframe.iloc[j]["message"]
+                    if ("Completed" in message) and  limpiar_nombre(message) == limpiar_nombre(row["message"]):
+                        #print("programa terminado!")
+                        program_name = limpiar_nombre(message)
+                        end = dataframe.iloc[j].name                   
+                        if (start.date() == end.date()):
+                            tiempos.append((start,program_name ,(end-start).total_seconds()))
+
+
+                        else:
+                            end_day = pd.Timestamp.combine(start, pd.Timestamp("23:59:59").time())
+                            tiempos.append((start,program_name, (end_day-start).total_seconds()))
+                            dia_actual = (start+timedelta(days=1)).date()
+                            while dia_actual != end.date():
+                                inicio_aux = pd.Timestamp.combine(dia_actual, pd.Timestamp("00:00:00").time())
+                                T = timedelta(days=1)
+                                tiempos.append((inicio_aux,program_name,T))
+                                dia_actual = dia_actual + timedelta(days=1)
+                            inicio_aux = pd.Timestamp.combine(dia_actual, pd.Timestamp("00:00:00").time())
+                            T = (end -inicio_aux).total_seconds()
+                            tiempos.append((inicio_aux,program_name,T))
+                            
+                                          
+                        '''else:                                               
+                            end_day = pd.Timestamp.combine(start, pd.Timestamp("23:59").time())
+                            tiempos.append((start,program_name ,(end_day - start).total_seconds()))
+
+                            start_day = pd.Timestamp.combine(start + timedelta(days=1) ,pd.Timestamp("00:01").time())
+                            tiempos.append((start_day,program_name,(end - start_day).total_seconds()))'''
+                        
+                        break
+                    j += 1
+                i += 1
+            else:
+                i += 1
+                    
+        df_progs = pd.DataFrame(tiempos, columns=["start", "name", "duration"])
+        df_progs["start"] = pd.to_datetime(df_progs["start"])
+        df_progs["duration"] = pd.to_timedelta(df_progs["duration"], unit = "s")    
+        df_progs = df_progs.set_index("start",drop = False)      
+
+        return df_progs
+
+    else:            
+        df_progs = dataframe[dataframe["message"].str.contains("Completed", na=False)]
+        df_progs = df_progs.resample(sample[tiempo_filtro]).size().rename('amount').to_frame()
+        #dataframe = dataframe.groupby("message").size().rename("amount").to_frame()
+
+        print("listo")
+        return dataframe
+    
+
+
+
+
+def limpiar_nombre(nombre:str):
+    if (":\\") in nombre:
+        nombre = nombre.split(":\\")[1].split(".")[0]
+    if ("\\") in nombre:
+        nombre = nombre.split("\\")[1]
+    return nombre
+
+def calcular_tiempo_activo(df_prod,filtros):
+    print("calculando tiempo activo")
     tiempos = []
     i = 0
-
-
     while i < len(df_prod): 
-        row = df_prod.iloc[i]
+        row = df_prod.iloc[i]        
         if "Active" in row["message"]:
-            start = row["timestamp"]
+            start = row.name
             j = i + 1
             while j < len(df_prod):
-                msg = df_prod.iloc[j]["message"]
-                date = df_prod.iloc[j]["timestamp"].date()
-                if "Active" not in msg:
-                    end = df_prod.iloc[j]["timestamp"]
+                msg = df_prod.iloc[j]["message"]                
+                if "Active" not in msg:                   
+                    end = df_prod.iloc[j].name
                     if (end.date() == start.date()):
                         tiempos.append((start.date(), (end - start).total_seconds()))                    
                     else:
-                        with open ("anomalies", "a") as anomalies:
-                            anomalies.write(f'Robot started at {start} and ended at {end},({round((end - start).total_seconds()/3600,2)}hours) \n so the time was splitted like this:\n')
-                            end_day = pd.Timestamp.combine(start.date(),pd.Timestamp("23:59").time())                   
-                            tiempos.append((start.date(), (end_day - start).total_seconds()))
-                            anomalies.write(f'start = {start}, end = {end_day}, ({round((end_day - start).total_seconds()/3600,2)} hours and then: \n')
-                            start_day = pd.Timestamp.combine(end.date(),pd.Timestamp("00:01").time())
-                            anomalies.write(f'started again at {start_day} and ended at {end}({round((end - start_day).total_seconds()/3600,2)}hours)\n \n ')
-                            tiempos.append((start_day.date(), (end - start_day).total_seconds()))
+                        end_day = pd.Timestamp.combine(start, pd.Timestamp("23:59:59").time())
+                        tiempos.append((start.date(), (end_day-start).total_seconds()))
+                        dia_actual = (start+timedelta(days=1)).date()
+                        while dia_actual != end.date():
+                            inicio_aux = pd.Timestamp.combine(dia_actual, pd.Timestamp("00:00:00").time())
+                            T = timedelta(days=1)
+                            tiempos.append((inicio_aux.date(),T))
+                            dia_actual = dia_actual + timedelta(days=1)
+                        inicio_aux = pd.Timestamp.combine(dia_actual, pd.Timestamp("00:00:00").time())
+                        T = (end -inicio_aux).total_seconds()
+                        tiempos.append((inicio_aux.date(),T))
                         
-                        
+                        '''                            
+                        end_day = pd.Timestamp.combine(start.date(),pd.Timestamp("23:59").time())
+                        tiempos.append((start.date(), (end_day - start).total_seconds()))
+                        start_day = pd.Timestamp.combine(end.date(),pd.Timestamp("00:01").time())
+                        tiempos.append((start_day.date(), (end - start_day).total_seconds()))'''
                     break
                 j += 1
             i = j
         else:
             i += 1
+    df_tiempos = pd.DataFrame(tiempos, columns=["date", "tiempo"])
+    df_tiempos["date"] = pd.to_datetime(df_tiempos["date"])
+    tiempo_activo = agrupar_por_tiempo(df_tiempos, filtros["time_filter"])
+    return tiempo_activo
+
+    
+def agrupar_por_tiempo(df, filtro):
+    if filtro == "mensual":
+        agrupado = df.groupby(df["date"].dt.to_period("M"))["tiempo"].sum()
+        agrupado.index = agrupado.index.to_timestamp()
+    elif filtro == "anual":
+        agrupado = df.groupby(df["date"].dt.to_period("Y"))["tiempo"].sum()
+        agrupado.index = agrupado.index.to_timestamp()
+    else:  # diario
+        agrupado = df.groupby(df["date"].dt.floor("D"))["tiempo"].sum()
+    return agrupado.to_frame(name="tiempo")
 
 
 
-    df_tiempos = pd.DataFrame(tiempos, columns=["date", "tiempo_activo_s"])
-    tiempo_activo_por_dia = df_tiempos.groupby("date")["tiempo_activo_s"].sum().rename("actividad")
-    # === COMBINAR TODO ===
-
-    df_final = pd.concat([errores_por_dia, aut_por_dia, programas_por_dia, tiempo_activo_por_dia], axis=1).fillna(0)
-    df_final = df_final.sort_index()
-    return df_final
-
-# === EXPORTAR ===
-def generar_reporte(filtros:dict):
-        
-    start = filtros['tiempo_inicial']
-    end = filtros['tiempo_final']
-    df = generar_dfs(start,end)
-    excel_path = "rapporto completo.xlsx"
-    df.to_excel(excel_path)
-    print(f"✅ Reporte generado: {excel_path}")
-
-def generar_grafico(filtros: dict):
-    # leer archivos, filtrar según filtros, etc.
-    # hacer los gráficos en una Figure
-
-    fig = Figure(figsize=(12, 6), dpi=100)
-    ax = fig.add_subplot()
-    start = filtros['tiempo_inicial']
-    end = filtros['tiempo_final']
-
-    df = generar_dfs(start,end)
-
-    ax.plot(df)  # o lo que sea
-    ax.set_title("Actividad del robot")
-    ax.legend(df.columns)
-    ...
-    return fig
