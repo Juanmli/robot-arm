@@ -91,7 +91,7 @@ def analizar_modes(dataframe,filtros):
     return dataframe
    
 
-def analizar_productividad(dataframe,filtros):#TODO
+#def analizar_productividad(dataframe,filtros):#TODO
     print("analizando_productividad")
     tiempo_filtro = filtros['time_filter']
     if filtros['time_filter']=='hora':
@@ -106,7 +106,54 @@ def analizar_productividad(dataframe,filtros):#TODO
         dataframe = calcular_tiempo_activo(dataframe,filtros)
     print("listo")
     return dataframe
-   
+
+def analizar_productividad(dataframe, filtros):
+    '''
+    Start = timestamp de inicio de actividad
+    signal = puede ser free, stop, active, reset
+    duration = cantidad de segundos entre señales. 
+    
+    '''
+    tiempos = []
+    i = 0 
+    while i < len(dataframe.index):
+        row = dataframe.iloc[i]
+        print(row["message"])
+        start = row.name
+        j = i+ 1
+        while j < len(dataframe.index):
+            message = dataframe.iloc[j]["message"]           
+            if message != row["message"]:
+                end = dataframe.iloc[j].name                   
+                if (start.date() == end.date()):                    
+                    tiempos.append((start, limpiar_mensaje(row["message"]) ,(end-start).total_seconds()))                    
+                else:
+                    end_day = pd.Timestamp.combine(start, pd.Timestamp("23:59:59").time())
+                    tiempos.append((start,limpiar_mensaje(row["message"]), (end_day-start).total_seconds()))
+                    dia_actual = (start+timedelta(days=1)).date()
+                    while dia_actual != end.date():
+                        inicio_aux = pd.Timestamp.combine(dia_actual, pd.Timestamp("00:00:00").time())
+                        T = timedelta(days=1)
+                        tiempos.append((inicio_aux,limpiar_mensaje(row["message"]),T))
+                        dia_actual = dia_actual + timedelta(days=1)
+                    inicio_aux = pd.Timestamp.combine(dia_actual, pd.Timestamp("00:00:00").time())
+                    T = (end -inicio_aux).total_seconds()
+                    tiempos.append((inicio_aux,limpiar_mensaje(row["message"]),T))
+                break
+            j += 1
+        i += 1
+        print(i)           
+        
+    df_prod = pd.DataFrame(tiempos, columns=["start", "status", "duration"])
+    df_prod["start"] = pd.to_datetime(df_prod["start"])
+    df_prod["duration"] = pd.to_timedelta(df_prod["duration"], unit = "s")    
+    df_prod = df_prod.set_index("start",drop = False)      
+    return df_prod        
+
+
+def limpiar_mensaje(mensaje):
+    if "to: " in mensaje:
+        return mensaje.split("to: ")[1]
 
 def analizar_programas(dataframe,filtros):#TODO
     print("analizando programas")
@@ -127,8 +174,7 @@ def analizar_programas(dataframe,filtros):#TODO
         while i < len(dataframe.index):
             row = dataframe.iloc[i]
             if "Starting" in row["message"]:               
-                start = row.name
-                #print(f"programa iniciado en {start}")
+                start = row.name                
                 j = i + 1 
                 while j < len(dataframe.index):
                     message = dataframe.iloc[j]["message"]
@@ -151,16 +197,7 @@ def analizar_programas(dataframe,filtros):#TODO
                                 dia_actual = dia_actual + timedelta(days=1)
                             inicio_aux = pd.Timestamp.combine(dia_actual, pd.Timestamp("00:00:00").time())
                             T = (end -inicio_aux).total_seconds()
-                            tiempos.append((inicio_aux,program_name,T))
-                            
-                                          
-                        '''else:                                               
-                            end_day = pd.Timestamp.combine(start, pd.Timestamp("23:59").time())
-                            tiempos.append((start,program_name ,(end_day - start).total_seconds()))
-
-                            start_day = pd.Timestamp.combine(start + timedelta(days=1) ,pd.Timestamp("00:01").time())
-                            tiempos.append((start_day,program_name,(end - start_day).total_seconds()))'''
-                        
+                            tiempos.append((inicio_aux,program_name,T))                        
                         break
                     j += 1
                 i += 1
@@ -171,7 +208,6 @@ def analizar_programas(dataframe,filtros):#TODO
         df_progs["start"] = pd.to_datetime(df_progs["start"])
         df_progs["duration"] = pd.to_timedelta(df_progs["duration"], unit = "s")    
         df_progs = df_progs.set_index("start",drop = False)      
-
         return df_progs
 
     else:            
@@ -181,10 +217,6 @@ def analizar_programas(dataframe,filtros):#TODO
 
         print("listo")
         return dataframe
-    
-
-
-
 
 def limpiar_nombre(nombre:str):
     if (":\\") in nombre:
@@ -220,7 +252,7 @@ def calcular_tiempo_activo(df_prod,filtros):
                         inicio_aux = pd.Timestamp.combine(dia_actual, pd.Timestamp("00:00:00").time())
                         T = (end -inicio_aux).total_seconds()
                         tiempos.append((inicio_aux.date(),T))
-                        
+
                         '''                            
                         end_day = pd.Timestamp.combine(start.date(),pd.Timestamp("23:59").time())
                         tiempos.append((start.date(), (end_day - start).total_seconds()))

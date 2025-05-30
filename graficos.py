@@ -18,11 +18,10 @@ def crear_graficos(filtros):
     dataframes = crear_dataframes(filtros)     
     i = 0 
     n = len(dataframes.items())
-    for nombre, dataframe in dataframes.items():        
-        
-        dataframes[nombre] = dataframes[nombre] [
+    for nombre, dataframe in dataframes.items():
+        dataframes[nombre] = dataframes[nombre][
             (dataframe.index <= end)  & (dataframe.index >= start)
-        ]
+        ]     
 
     for nombre, dataframe in dataframes.items():
     
@@ -33,21 +32,21 @@ def crear_graficos(filtros):
             ax = fig.add_subplot(n, 1, i+1, sharex=first_ax)      
       
       # Para cada tipo de filtro, el tipo de gráfico puede variar.
-        print("dataframes filtrados**************************************************")
+  
         if (nombre == 'productivity'):            
             graficar_productividad(ax,dataframe,filtros)
             print(dataframe)
           
         elif(nombre == 'errors'):
             graficar_errores(ax,dataframe,filtros)
-            print(dataframe)
+           
         elif(nombre == 'modes'):
             graficar_modes(ax,dataframe,filtros)
-            print(dataframe)
+            
         elif nombre == "programs":
             graficar_programs(ax,dataframe,filtros)    
-            print(dataframe)
-            print("******************************************************************************************")
+        
+
         ax.set_ylabel(nombre) 
         #Solo el último gráfico tiene xtick
         if i < n - 1:
@@ -62,10 +61,28 @@ def crear_graficos(filtros):
 def graficar_productividad(ax,dataframe, filtros):
     print('graficando productividad')
     if filtros['time_filter'] == 'hora':            
-        ax.step(dataframe.index, dataframe["message"], where="post")
-        ax.set_yticks([0, 1, 2, 3])
-        ax.set_yticklabels(["Stop", "Free", "Reset", "Active"])
-    else:                                
+    #     ax.step(dataframe.index, dataframe["message"], where="post")
+    #     ax.set_yticks([0, 1, 2, 3])
+    #     ax.set_yticklabels(["Stop", "Free", "Reset", "Active"])
+        status_dict = dict()
+        i = 0
+        while i < len(dataframe.index):
+            row = dataframe.iloc[i]
+            if row["status"] not in status_dict.keys():
+                status_dict[row["status"]] = list([(row["start"], row["duration"])])
+            else:                   
+                status_dict[row["status"]].append((row["start"],row["duration"]))
+            i +=1
+        
+        i = 0
+        for programa, actividad in status_dict.items():
+            color_hex = "#{:06x}".format(random.randint(0, 0xFFFFFF))
+            ax.broken_barh( actividad,(i-0.5,1), color=color_hex)
+            ax.set_yticks(range(len(status_dict.keys())), labels = status_dict.keys())
+            ax.invert_yaxis()
+            i += 1
+
+    else:                                 
         bars=ax.bar(dataframe.index, dataframe["tiempo"]/3600 )
         if len(dataframe.index)<= max_xticks:
             ax.bar_label(bars, fmt="%.1f", padding=3)
@@ -82,11 +99,9 @@ def graficar_errores(ax,dataframe, filtros):
 
 
 def graficar_modes(ax,dataframe,filtros):
-    print('graficando modos')
-    print(dataframe)
+    print('graficando modos')    
     if filtros["time_filter"] == "hora":
-        ax.step(dataframe.index, dataframe["message_mapped"], where="post")
-        print(dataframe.index)
+        ax.step(dataframe.index, dataframe["message_mapped"], where="post")        
         codes=[]
         messages=[]
         for j in range(len(dataframe.index)):
@@ -106,7 +121,9 @@ def graficar_modes(ax,dataframe,filtros):
             ax.bar_label(bars, fmt="%.1f", padding=3)         
 
 def graficar_programs(ax,dataframe,filtros):  
-    print('graficando programas')  
+    print('graficando programas')
+
+    "llega una secuencia del tipo: (start, nombre, duración)"  
     if filtros["time_filter"] == "hora":
         programs_dict = dict()
         i = 0
