@@ -34,8 +34,7 @@ def crear_graficos(filtros):
       # Para cada tipo de filtro, el tipo de gráfico puede variar.
   
         if (nombre == 'productivity'):            
-            graficar_productividad(ax,dataframe,filtros)
-            print(dataframe)
+            graficar_productividad(ax,dataframe,filtros)            
           
         elif(nombre == 'errors'):
             graficar_errores(ax,dataframe,filtros)
@@ -60,32 +59,59 @@ def crear_graficos(filtros):
 
 def graficar_productividad(ax,dataframe, filtros):
     print('graficando productividad')
-    if filtros['time_filter'] == 'hora':            
-    #     ax.step(dataframe.index, dataframe["message"], where="post")
-    #     ax.set_yticks([0, 1, 2, 3])
-    #     ax.set_yticklabels(["Stop", "Free", "Reset", "Active"])
+    if filtros['time_filter'] == 'hora':
         status_dict = dict()
         i = 0
         while i < len(dataframe.index):
             row = dataframe.iloc[i]
             if row["status"] not in status_dict.keys():
-                status_dict[row["status"]] = list([(row["start"], row["duration"])])
+                #status_dict[row["status"]] = list([(row["start"], row["duration"])])
+                status_dict[row["status"]] = list([(dataframe.index[i], row["duration"])])
             else:                   
-                status_dict[row["status"]].append((row["start"],row["duration"]))
+                #status_dict[row["status"]].append((row["start"],row["duration"]))
+                status_dict[row["status"]].append((dataframe.index[i],row["duration"]))
             i +=1
         
         i = 0
         for programa, actividad in status_dict.items():
             color_hex = "#{:06x}".format(random.randint(0, 0xFFFFFF))
             ax.broken_barh( actividad,(i-0.5,1), color=color_hex)
-            ax.set_yticks(range(len(status_dict.keys())), labels = status_dict.keys())
-            ax.invert_yaxis()
+            ax.set_yticks(range(len(status_dict.keys())), labels = status_dict.keys())            
             i += 1
 
-    else:                                 
-        bars=ax.bar(dataframe.index, dataframe["tiempo"]/3600 )
-        if len(dataframe.index)<= max_xticks:
-            ax.bar_label(bars, fmt="%.1f", padding=3)
+    # else:                                 
+    #     bars=ax.bar(dataframe.index, dataframe["tiempo"]/3600 )
+    #     if len(dataframe.index)<= max_xticks:
+    #         ax.bar_label(bars, fmt="%.1f", padding=3)
+    elif filtros["time_filter"] == "diario":
+        import numpy as np
+
+        # Eje X: días
+        
+        fechas = dataframe.index.date.astype(str)
+        x = np.arange(len(fechas))  # posiciones de cada grupo
+
+        # Ancho de cada barra individual
+        width = 0.25
+
+        # Columnas a graficar
+        flags = dataframe.columns
+
+        # Para cada estado, desplazamos las barras
+        for i, flag in enumerate(flags):
+            ax.bar(x + i * width, dataframe[flag]/3600, width=width, label=flag)
+            
+
+        # Seteo del eje X
+        ax.set_xticks(x + width * (len(flags) - 1) / 2)
+        ax.set_xticklabels(fechas, rotation=45)
+        ax.set_ylabel('Duración (s)')
+        ax.set_xlabel('Fecha')       
+        ax.legend()
+        ax.grid(True)
+
+
+
 
 
 def graficar_errores(ax,dataframe, filtros):
@@ -98,27 +124,56 @@ def graficar_errores(ax,dataframe, filtros):
             ax.bar_label(bars, fmt="%.1f", padding=3)           
 
 
-def graficar_modes(ax,dataframe,filtros):
-    print('graficando modos')    
-    if filtros["time_filter"] == "hora":
-        ax.step(dataframe.index, dataframe["message_mapped"], where="post")        
-        codes=[]
-        messages=[]
-        for j in range(len(dataframe.index)):
-            code = dataframe.iloc[j]["message_mapped"]
-            message = dataframe.iloc[j]["message"]
-            if ":" in message :
-                message = message.split(":")[1]
-            if code not in codes:
-                codes.append(code)
-                messages.append(message)
+# def graficar_modes(ax,dataframe,filtros):
+#     print('graficando modos')    
+#     if filtros["time_filter"] == "hora":
+#         ax.step(dataframe.index, dataframe["message_mapped"], where="post")
+        
+#         codes=[]
+#         messages=[]
+#         for j in range(len(dataframe.index)):
+#             code = dataframe.iloc[j]["message_mapped"]
+#             message = dataframe.iloc[j]["message"]
+#             if ":" in message :
+#                 message = message.split(":")[1]
+#             if code not in codes:
+#                 codes.append(code)
+#                 messages.append(message)
 
-        ax.set_yticks(codes)
-        ax.set_yticklabels(messages)
-    else:
-        bars = ax.bar(dataframe.index, dataframe['amount'],edgecolor='white',linewidth = 0.7, grid =True)
+#         ax.set_yticks(codes)
+#         ax.set_yticklabels(messages)
+#     else:
+#         bars = ax.bar(dataframe.index, dataframe['amount'],edgecolor='white',linewidth = 0.7, grid =True)
+#         if len(dataframe.index)<= max_xticks:
+#             ax.bar_label(bars, fmt="%.1f", padding=3)         
+
+def graficar_modes(ax,dataframe,filtros):
+    print('graficando productividad')
+    if filtros['time_filter'] == 'hora':            
+
+        status_dict = dict()
+        i = 0
+        while i < len(dataframe.index):
+            row = dataframe.iloc[i]
+            if row["status"] not in status_dict.keys():
+                #status_dict[row["status"]] = list([(row["start"], row["duration"])])
+                status_dict[row["status"]] = list([(dataframe.index[i], row["duration"])])
+            else:                   
+                #status_dict[row["status"]].append((row["start"],row["duration"]))
+                status_dict[row["status"]].append((dataframe.index[i],row["duration"]))
+            i +=1
+        
+        i = 0
+        for programa, actividad in status_dict.items():
+            color_hex = "#{:06x}".format(random.randint(0, 0xFFFFFF))
+            ax.broken_barh( actividad,(i-0.5,1), color=color_hex)
+            ax.set_yticks(range(len(status_dict.keys())), labels = status_dict.keys())            
+            i += 1
+
+    else:                                 
+        bars=ax.bar(dataframe.index, dataframe["tiempo"]/3600 )
         if len(dataframe.index)<= max_xticks:
-            ax.bar_label(bars, fmt="%.1f", padding=3)         
+            ax.bar_label(bars, fmt="%.1f", padding=3)
 
 def graficar_programs(ax,dataframe,filtros):  
     print('graficando programas')
@@ -139,8 +194,7 @@ def graficar_programs(ax,dataframe,filtros):
         for programa,actividad in programs_dict.items():
             color_hex = "#{:06x}".format(random.randint(0, 0xFFFFFF))
             ax.broken_barh(actividad,(i-0.5,1), color=color_hex)
-            ax.set_yticks(range(len(programs_dict.keys())), labels =programs_dict.keys())
-            ax.invert_yaxis()
+            ax.set_yticks(range(len(programs_dict.keys())), labels =programs_dict.keys())            
             i += 1
 
 

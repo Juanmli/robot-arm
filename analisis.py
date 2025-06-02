@@ -31,9 +31,6 @@ def cargar_csv(nombre_archivo):
 
 
 def crear_dataframes(filtros):
-
-    start = filtros['tiempo_inicial']
-    end = filtros['tiempo_final'] 
     
     dataframes:dict = {}    
 
@@ -41,9 +38,7 @@ def crear_dataframes(filtros):
         if filtros[clave] == True:
             dataframes[clave] = cargar_csv(valor) 
             dataframes[clave].set_index("timestamp", inplace=True)            
-            dataframes[clave].index = pd.to_datetime(dataframes[clave].index)
-        
-            
+            dataframes[clave].index = pd.to_datetime(dataframes[clave].index)           
 
     for nombre, dataframe in dataframes.items():
         if nombre == 'errors':                        
@@ -68,7 +63,7 @@ def analizar_errores(dataframe,filtros):#TODO
     return df
     
 
-def analizar_modes(dataframe,filtros):
+#def analizar_modes(dataframe,filtros):
     print("analizando modos")
     tiempo_filtro = filtros['time_filter']
     if tiempo_filtro == "hora":
@@ -89,23 +84,11 @@ def analizar_modes(dataframe,filtros):
         dataframe= dataframe.resample(sample[tiempo_filtro]).size().rename('amount').to_frame()
     print("listo")
     return dataframe
-   
 
-#def analizar_productividad(dataframe,filtros):#TODO
-    print("analizando_productividad")
-    tiempo_filtro = filtros['time_filter']
-    if filtros['time_filter']=='hora':
-            dataframe['message']=dataframe['message'].map(
-                {'Program state changed to: Active':3,
-                'Program state changed to: Reset':2,
-                'Program state changed to: Free':1,
-                'Program state changed to: Stop':0             
-                }
-            )
-    else:
-        dataframe = calcular_tiempo_activo(dataframe,filtros)
-    print("listo")
-    return dataframe
+def analizar_modes(dataframe,filtros):
+    df = analizar_productividad(dataframe,filtros)
+    return df
+
 
 def analizar_productividad(dataframe, filtros):
     '''
@@ -147,8 +130,19 @@ def analizar_productividad(dataframe, filtros):
     df_prod = pd.DataFrame(tiempos, columns=["start", "status", "duration"])
     df_prod["start"] = pd.to_datetime(df_prod["start"])
     df_prod["duration"] = pd.to_timedelta(df_prod["duration"], unit = "s")    
-    df_prod = df_prod.set_index("start",drop = False)      
-    return df_prod        
+    df_prod = df_prod.set_index("start")#,drop = False)
+
+    if filtros["time_filter"] == "hora":      
+        return df_prod        
+
+    if filtros["time_filter"] == "diario":
+        df_prod.index = pd.to_datetime(df_prod.index)
+        df_prod["date"]=df_prod.index.date
+        if not pd.api.types.is_numeric_dtype(df_prod['duration']):
+            df_prod['duration'] = pd.to_timedelta(df_prod['duration']).dt.total_seconds()
+        df_agrupado = df_prod.groupby(['date', 'status'])['duration'].sum().unstack(fill_value=0)
+        df_agrupado.index = pd.to_datetime(df_agrupado.index)
+        return df_agrupado
 
 
 def limpiar_mensaje(mensaje):

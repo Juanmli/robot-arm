@@ -16,9 +16,9 @@ class App(tk.Tk):
         self.filtros = {
             'time_filter':tk.StringVar(self,value='hora'),
             'productivity':tk.BooleanVar(value=True),
-            'errors':tk.BooleanVar(value=True),
-            'programs':tk.BooleanVar(value=True),
-            'modes':tk.BooleanVar(value=True),
+            'errors':tk.BooleanVar(value=False),
+            'programs':tk.BooleanVar(value=False),
+            'modes':tk.BooleanVar(value=False),
             'hora_var_inicio':tk.StringVar(value='00'),
             'minuto_var_inicio': tk.StringVar(value='00'),
             'hora_var_fin' : tk.StringVar(value='00'),
