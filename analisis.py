@@ -35,7 +35,7 @@ def crear_dataframes(filtros):
     dataframes:dict = {}    
 
     for clave,valor in ARCHIVOS.items():
-        if filtros[clave] == True:
+        if True:#filtros[clave] == True:
             dataframes[clave] = cargar_csv(valor) 
             dataframes[clave].set_index("timestamp", inplace=True)            
             dataframes[clave].index = pd.to_datetime(dataframes[clave].index)           
@@ -133,7 +133,7 @@ def analizar_productividad(dataframe, filtros):
     df_prod = df_prod.set_index("start")#,drop = False)
 
     if filtros["time_filter"] == "hora":      
-        return df_prod        
+        return df_prod
 
     if filtros["time_filter"] == "diario":
         df_prod.index = pd.to_datetime(df_prod.index)
@@ -144,6 +144,8 @@ def analizar_productividad(dataframe, filtros):
         df_agrupado.index = pd.to_datetime(df_agrupado.index)
         return df_agrupado
 
+def agrupar_dataframe(dataframe,filtros):
+    pass
 
 def limpiar_mensaje(mensaje):
     if "to: " in mensaje:

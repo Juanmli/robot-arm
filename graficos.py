@@ -6,7 +6,7 @@ import random
 
 max_xticks = 5
 
-def crear_graficos(filtros):
+def crear_graficos(dfs, filtros):
 
     start = pd.to_datetime(filtros['tiempo_inicial'])
     end = pd.to_datetime(filtros['tiempo_final']) 
@@ -15,15 +15,20 @@ def crear_graficos(filtros):
     fig = Figure(figsize=(12,6))
     #crear_dataframes devuelve un diccionario con el nombre del dataframe como clave, y el 
     #propio df como valor. 
-    dataframes = crear_dataframes(filtros)     
+    #dataframes = crear_dataframes(filtros)
+    dataframes = dfs.copy()     
     i = 0 
     n = len(dataframes.items())
+
+    for nombre in list(dataframes.keys()):
+        if not filtros[nombre]:
+            del(dataframes[nombre])
     for nombre, dataframe in dataframes.items():
         dataframes[nombre] = dataframes[nombre][
             (dataframe.index <= end)  & (dataframe.index >= start)
         ]     
 
-    for nombre, dataframe in dataframes.items():
+    for nombre, dataframe in dataframes.items():    
     
         if i==0:                
             ax = fig.add_subplot(n, 1, i+1)

@@ -6,6 +6,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from graficos import crear_graficos
 from exportador import generar_reporte
 from calendar import monthrange
+from analisis import crear_dataframes
 
 class App(tk.Tk):
     def __init__(self):
@@ -16,15 +17,16 @@ class App(tk.Tk):
         self.filtros = {
             'time_filter':tk.StringVar(self,value='hora'),
             'productivity':tk.BooleanVar(value=True),
-            'errors':tk.BooleanVar(value=False),
-            'programs':tk.BooleanVar(value=False),
-            'modes':tk.BooleanVar(value=False),
+            'errors':tk.BooleanVar(value=True),
+            'programs':tk.BooleanVar(value=True),
+            'modes':tk.BooleanVar(value=True),
             'hora_var_inicio':tk.StringVar(value='00'),
             'minuto_var_inicio': tk.StringVar(value='00'),
             'hora_var_fin' : tk.StringVar(value='00'),
-            'minuto_var_fin':tk.StringVar(value='00')
+            'minuto_var_fin':tk.StringVar(value='00'),
+        }     
 
-        }        
+        
         #contenedor izquierdo
         # Contenedor izquierdo con scroll
         self.canvas_izq = tk.Canvas(self, width=210)
@@ -129,6 +131,8 @@ class App(tk.Tk):
         self.boton_reporte = tk.Button(self.frame_exportar, text='generar_reporte', command=self.reporte)
         self.boton_reporte.pack(side='right')
     
+        #Crear diccionario con todos los dfs.    
+        self.dataframes = crear_dataframes(self.obtener_filtros())
 
 
     def radio_presionado(self):    
@@ -276,7 +280,7 @@ class App(tk.Tk):
     def graficar(self):
         self.sincronizar_fechas_si_horario()
         filtros = self.obtener_filtros()
-        fig = crear_graficos(filtros)
+        fig = crear_graficos(self.dataframes,filtros)
         self.mostrar_figura_en_canvas(fig)
         print('grafico hecho')                
 
