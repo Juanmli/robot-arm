@@ -12,7 +12,7 @@ def generar_reporte(dfs,filtros):
     
     #Se filtran por fecha
     start = pd.to_datetime(filtros['tiempo_inicial'])
-    end = pd.to_datetime(filtros['tiempo_final'])   
+    end = pd.to_datetime(filtros['tiempo_final'])
     time_filter = filtros["time_filter"]
     dataframes = dfs
 
@@ -23,14 +23,20 @@ def generar_reporte(dfs,filtros):
 
     for nombre in list(dataframes.keys()):
         df = dataframes[nombre]
-        df_filtrado = df[(df.index >= start) & (df.index <= end)]
+        df_filtrado = df[(pd.to_datetime(df.index) >= start) & (pd.to_datetime(df.index) <= end)]
         df_final = aplicar_timefilter(nombre, df_filtrado, filtros)
         print("así llega el df al exportador. ")
         print(nombre, df_final)
         dataframes[nombre] = df_final
+
+
+    fecha_inicio_str = filtros['tiempo_inicial'].strftime('%Y-%m-%d')
+    fecha_fin_str = filtros['tiempo_final'].strftime('%Y-%m-%d')
+    nombre_archivo = f"{fecha_inicio_str}_{fecha_fin_str}.xlsx"
+    excel_path = os.path.join("reports", nombre_archivo)
              
-    nombre_archivo = f"{start}-{end}.xlsx"
-    excel_path = os.path.join(carpeta_reportes, nombre_archivo)
+    #nombre_archivo = f"{start}-{end}.xlsx"
+    #excel_path = os.path.join(carpeta_reportes, nombre_archivo)
     with pd.ExcelWriter(excel_path, engine="xlsxwriter") as writer:
         for nombre in list(dataframes.keys()):
             df = dataframes[nombre]           

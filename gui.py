@@ -146,15 +146,21 @@ class App(tk.Tk):
     
         print("sicnronizar calendarios")
         if self.filtros["time_filter"].get() == "hora":
-            fecha = self.calendario_inicio.selection_get()
-            self.calendario_fin.selection_set(fecha)
-        else:        
-                # Ajustar los calendarios
-            fecha_ini = self.ajustar_fecha_inicio_a_mes(self.calendario_inicio.get_date())
-            fecha_fin = self.ajustar_fecha_fin_a_mes(self.calendario_fin.get_date())
+            fecha_inicial = self.calendario_inicio.selection_get()
+            fecha_final = self.calendario_fin.selection_get()
 
-            self.calendario_inicio.selection_set(fecha_ini)
-            self.calendario_fin.selection_set(fecha_fin)
+
+            self.calendario_fin.selection_set(fecha_inicial)
+        else: 
+            pass       
+                # Ajustar los calendarios
+            #fecha_ini = self.ajustar_fecha_inicio_a_mes(self.calendario_inicio.get_date())
+            #fecha_fin = self.ajustar_fecha_fin_a_mes(self.calendario_fin.get_date())
+
+        
+
+            #self.calendario_inicio.selection_set(fecha_ini)
+            #self.calendario_fin.selection_set(fecha_fin)
 
             # Deshabilitar spinboxes de hora si los tenés
             self.hora_inicio_spinbox.config(state="disabled")
@@ -280,14 +286,16 @@ class App(tk.Tk):
     def graficar(self):
         self.sincronizar_fechas_si_horario()
         filtros = self.obtener_filtros()
-        fig = crear_graficos(self.dataframes,filtros)
+        dfs = self.dataframes.copy()
+        fig = crear_graficos(dfs,filtros)
         self.mostrar_figura_en_canvas(fig)
         print('grafico hecho')                
 
     def reporte(self):
         self.sincronizar_fechas_si_horario()
+        dfs = self.dataframes.copy()
         filtros = self.obtener_filtros()
-        generar_reporte(self.dataframes, filtros)    
+        generar_reporte(dfs, filtros)    
 
 if __name__ == "__main__":
     app = App()
