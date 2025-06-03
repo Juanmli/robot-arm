@@ -1,6 +1,6 @@
-from analisis import crear_dataframes
 
-def generar_reporte(filtros:dict):
+
+def generar_reporte(filtros:dict, dataframes):
         
     start = filtros['tiempo_inicial']
     end = filtros['tiempo_final']
