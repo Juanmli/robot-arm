@@ -3,6 +3,8 @@ from analisis import crear_dataframes
 import matplotlib.dates as mdates
 import pandas as pd
 import random
+from analisis import agrupar_productividad
+import numpy as np
 
 max_xticks = 5
 
@@ -11,25 +13,26 @@ def crear_graficos(dfs, filtros):
     start = pd.to_datetime(filtros['tiempo_inicial'])
     end = pd.to_datetime(filtros['tiempo_final']) 
 
-    print("Creando figura")
-    fig = Figure(figsize=(12,6))
+    
     #crear_dataframes devuelve un diccionario con el nombre del dataframe como clave, y el 
     #propio df como valor. 
     #dataframes = crear_dataframes(filtros)
     dataframes = dfs.copy()     
-    i = 0 
-    n = len(dataframes.items())
-
+    #Elimino dfs que no están en el filtro
     for nombre in list(dataframes.keys()):
         if not filtros[nombre]:
             del(dataframes[nombre])
+    #Filtro por fechas
     for nombre, dataframe in dataframes.items():
         dataframes[nombre] = dataframes[nombre][
             (dataframe.index <= end)  & (dataframe.index >= start)
         ]     
 
-    for nombre, dataframe in dataframes.items():    
-    
+    i = 0 
+    n = len(dataframes.items())
+
+    fig = Figure(figsize=(12, n+8))
+    for nombre, dataframe in dataframes.items():      
         if i==0:                
             ax = fig.add_subplot(n, 1, i+1)
             first_ax = ax
@@ -51,13 +54,13 @@ def crear_graficos(dfs, filtros):
             graficar_programs(ax,dataframe,filtros)    
         
 
-        ax.set_ylabel(nombre) 
+        ax.set_ylabel(nombre)         
         #Solo el último gráfico tiene xtick
         if i < n - 1:
             ax.tick_params(labelbottom=False)
         i+=1
     print("Figura creada")
-     
+    fig.subplots_adjust(bottom=0.3) 
     return fig
 
 
@@ -69,11 +72,9 @@ def graficar_productividad(ax,dataframe, filtros):
         i = 0
         while i < len(dataframe.index):
             row = dataframe.iloc[i]
-            if row["status"] not in status_dict.keys():
-                #status_dict[row["status"]] = list([(row["start"], row["duration"])])
+            if row["status"] not in status_dict.keys():                
                 status_dict[row["status"]] = list([(dataframe.index[i], row["duration"])])
-            else:                   
-                #status_dict[row["status"]].append((row["start"],row["duration"]))
+            else:
                 status_dict[row["status"]].append((dataframe.index[i],row["duration"]))
             i +=1
         
@@ -84,36 +85,27 @@ def graficar_productividad(ax,dataframe, filtros):
             ax.set_yticks(range(len(status_dict.keys())), labels = status_dict.keys())            
             i += 1
 
-    # else:                                 
-    #     bars=ax.bar(dataframe.index, dataframe["tiempo"]/3600 )
-    #     if len(dataframe.index)<= max_xticks:
-    #         ax.bar_label(bars, fmt="%.1f", padding=3)
     elif filtros["time_filter"] == "diario":
-        import numpy as np
-
+        dataframe = agrupar_productividad(dataframe, filtros) 
         # Eje X: días
-        
         fechas = dataframe.index.date.astype(str)
         x = np.arange(len(fechas))  # posiciones de cada grupo
-
         # Ancho de cada barra individual
-        width = 0.25
-
+        width = 0.5
         # Columnas a graficar
         flags = dataframe.columns
-
-        # Para cada estado, desplazamos las barras
+        #Para cada estado, desplazamos las barras
         for i, flag in enumerate(flags):
-            ax.bar(x + i * width, dataframe[flag]/3600, width=width, label=flag)
-            
+            #ax.bar(x + i * width, dataframe[flag]/3600, width=width, label=flag)
+            ax.bar(x+i*width/5 , dataframe[flag]/3600, width=width, label=flag)
+      
 
         # Seteo del eje X
-        ax.set_xticks(x + width * (len(flags) - 1) / 2)
-        ax.set_xticklabels(fechas, rotation=45)
-        ax.set_ylabel('Duración (s)')
+        ax.set_xticks(x + width/5 * (len(flags) - 1) / 2)
+        ax.set_xticklabels(fechas, rotation=90)        
         ax.set_xlabel('Fecha')       
         ax.legend()
-        ax.grid(True)
+        #ax.grid(True)
 
 
 
@@ -126,31 +118,8 @@ def graficar_errores(ax,dataframe, filtros):
     else:
         bars = ax.bar(dataframe.index, dataframe['amount'],edgecolor='white',linewidth = 0.7)
         if len(dataframe.index)<= max_xticks:
-            ax.bar_label(bars, fmt="%.1f", padding=3)           
-
-
-# def graficar_modes(ax,dataframe,filtros):
-#     print('graficando modos')    
-#     if filtros["time_filter"] == "hora":
-#         ax.step(dataframe.index, dataframe["message_mapped"], where="post")
-        
-#         codes=[]
-#         messages=[]
-#         for j in range(len(dataframe.index)):
-#             code = dataframe.iloc[j]["message_mapped"]
-#             message = dataframe.iloc[j]["message"]
-#             if ":" in message :
-#                 message = message.split(":")[1]
-#             if code not in codes:
-#                 codes.append(code)
-#                 messages.append(message)
-
-#         ax.set_yticks(codes)
-#         ax.set_yticklabels(messages)
-#     else:
-#         bars = ax.bar(dataframe.index, dataframe['amount'],edgecolor='white',linewidth = 0.7, grid =True)
-#         if len(dataframe.index)<= max_xticks:
-#             ax.bar_label(bars, fmt="%.1f", padding=3)         
+            ax.bar_label(bars, fmt="%.1f", padding=3)
+      
 
 def graficar_modes(ax,dataframe,filtros):
     print('graficando productividad')
@@ -182,7 +151,6 @@ def graficar_modes(ax,dataframe,filtros):
 
 def graficar_programs(ax,dataframe,filtros):  
     print('graficando programas')
-
     "llega una secuencia del tipo: (start, nombre, duración)"  
     if filtros["time_filter"] == "hora":
         programs_dict = dict()

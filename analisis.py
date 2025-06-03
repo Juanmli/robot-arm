@@ -132,9 +132,12 @@ def analizar_productividad(dataframe, filtros):
     df_prod["duration"] = pd.to_timedelta(df_prod["duration"], unit = "s")    
     df_prod = df_prod.set_index("start")#,drop = False)
 
-    if filtros["time_filter"] == "hora":      
-        return df_prod
+      
+    return df_prod
 
+
+def agrupar_productividad(dataframe,filtros):
+    df_prod = dataframe.copy()
     if filtros["time_filter"] == "diario":
         df_prod.index = pd.to_datetime(df_prod.index)
         df_prod["date"]=df_prod.index.date
@@ -142,10 +145,8 @@ def analizar_productividad(dataframe, filtros):
             df_prod['duration'] = pd.to_timedelta(df_prod['duration']).dt.total_seconds()
         df_agrupado = df_prod.groupby(['date', 'status'])['duration'].sum().unstack(fill_value=0)
         df_agrupado.index = pd.to_datetime(df_agrupado.index)
+        print(df_agrupado/3600)
         return df_agrupado
-
-def agrupar_dataframe(dataframe,filtros):
-    pass
 
 def limpiar_mensaje(mensaje):
     if "to: " in mensaje:

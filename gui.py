@@ -287,7 +287,6 @@ class App(tk.Tk):
     def reporte(self):
         filtros = self.obtener_filtros()
         generar_reporte(filtros)
-
     
 
 if __name__ == "__main__":
