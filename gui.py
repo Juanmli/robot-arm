@@ -285,9 +285,9 @@ class App(tk.Tk):
         print('grafico hecho')                
 
     def reporte(self):
+        self.sincronizar_fechas_si_horario()
         filtros = self.obtener_filtros()
-        generar_reporte(filtros)
-    
+        generar_reporte(self.dataframes, filtros)    
 
 if __name__ == "__main__":
     app = App()

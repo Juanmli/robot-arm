@@ -1,5 +1,5 @@
 from matplotlib.figure import Figure
-from analisis import crear_dataframes, agrupar_productividad, agrupar_errores
+from analisis import agrupar_productividad, agrupar_errores
 import matplotlib.dates as mdates
 import pandas as pd
 import random
@@ -50,8 +50,9 @@ def crear_graficos(dfs, filtros):
         elif nombre == "programs":
             graficar_programs(ax,dataframe,filtros)    
         
-
-        ax.set_ylabel(nombre)         
+        ax.set_ylabel(nombre)
+        if nombre != "errors" and filtros["time_filter"]!= "hora":
+            ax.set_ylabel(nombre + " (h)")      
         #Solo el último gráfico tiene xtick
         if i < n - 1:
             ax.tick_params(labelbottom=False)
@@ -127,7 +128,7 @@ def graficar_errores(ax,dataframe, filtros):
         width = 0.5
           
         puntos_medios = (x[:-1] + x[1:])/2
-        ax.bar(x, dataframe["message"], width=width, label="Errors")
+        ax.bar(x, dataframe["errors"], width=width, label="Errors")
         for punto in puntos_medios:
             ax.axvline(x=punto, linestyle='--', color='gray', alpha=0.5)
 
@@ -173,9 +174,9 @@ def graficar_programs(ax,dataframe,filtros):
         while i < len(dataframe.index):
             row = dataframe.iloc[i]
             if row["name"] not in programs_dict.keys():
-                programs_dict[row["name"]] = list([(row["start"], row["duration"])])
+                programs_dict[row["name"]] = list([(dataframe.index[i], row["duration"])])
             else:                   
-                programs_dict[row["name"]].append((row["start"],row["duration"]))
+                programs_dict[row["name"]].append((dataframe.index[i],row["duration"]))
             i +=1
         
         i = 0

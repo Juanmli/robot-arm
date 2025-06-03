@@ -54,7 +54,8 @@ def crear_dataframes(filtros):
 
 def analizar_errores(dataframe,filtros):#TODO
     print('analizando errores')     
-    df = dataframe
+    
+    df = pd.DataFrame(dataframe["message"])
     return df
 
 def analizar_modes(dataframe,filtros):
@@ -71,8 +72,7 @@ def analizar_productividad(dataframe, filtros):
     tiempos = []
     i = 0 
     while i < len(dataframe.index):
-        row = dataframe.iloc[i]
-        print(row["message"])
+        row = dataframe.iloc[i]        
         start = row.name
         j = i+ 1
         while j < len(dataframe.index):
@@ -95,8 +95,7 @@ def analizar_productividad(dataframe, filtros):
                     tiempos.append((inicio_aux,limpiar_mensaje(row["message"]),T))
                 break
             j += 1
-        i += 1
-        print(i)           
+        i += 1                 
         
     df_prod = pd.DataFrame(tiempos, columns=["start", "name", "duration"])
     df_prod["start"] = pd.to_datetime(df_prod["start"])
@@ -108,19 +107,21 @@ def analizar_productividad(dataframe, filtros):
 
 def agrupar_productividad(dataframe,filtros):
     time_filter = filtros["time_filter"]
-    df_prod = dataframe.copy()    
+    df_prod = dataframe.copy()
     df_prod.index = pd.to_datetime(df_prod.index)
-    df_prod["date"]=df_prod.index.date
+    df_prod["date"] = df_prod.index.date
     if not pd.api.types.is_numeric_dtype(df_prod['duration']):
         df_prod['duration'] = pd.to_timedelta(df_prod['duration']).dt.total_seconds()
     df_agrupado = df_prod.groupby([pd.Grouper(freq=sample[time_filter]), 'name'])['duration'].sum().unstack(fill_value=0)
     df_agrupado.index = pd.to_datetime(df_agrupado.index)
-    print(df_agrupado/3600)
+
+    print("así sale el df de Agrupar productividad")
+    print(df_agrupado)
+    
     return df_agrupado
 
 def agrupar_errores(dataframe,filtros):
-    print("agrupando errores")
-    print(dataframe)
+    print("agrupando errores")    
     time_filter = filtros["time_filter"]
     df = dataframe.copy()    
     df.index = pd.to_datetime(df.index)
@@ -128,6 +129,9 @@ def agrupar_errores(dataframe,filtros):
     df.index = pd.to_datetime(df.index)
     df_agrupado = df["message"].groupby(pd.Grouper(freq=sample[time_filter])).size().to_frame()
     df_agrupado.index = pd.to_datetime(df_agrupado.index)
+    df_agrupado = df_agrupado.rename(columns={"message": "errors"})
+    df_agrupado.index.name = "date"
+
     return df_agrupado
 
 def limpiar_mensaje(mensaje):
@@ -156,13 +160,10 @@ def analizar_programas(dataframe,filtros):#TODO
             while j < len(dataframe.index):
                 message = dataframe.iloc[j]["message"]
                 if ("Completed" in message) and  limpiar_nombre(message) == limpiar_nombre(row["message"]):
-                    #print("programa terminado!")
                     program_name = limpiar_nombre(message)
                     end = dataframe.iloc[j].name                   
                     if (start.date() == end.date()):
                         tiempos.append((start,program_name ,(end-start).total_seconds()))
-
-
                     else:
                         end_day = pd.Timestamp.combine(start, pd.Timestamp("23:59:59").time())
                         tiempos.append((start,program_name, (end_day-start).total_seconds()))
@@ -184,7 +185,7 @@ def analizar_programas(dataframe,filtros):#TODO
     df_progs = pd.DataFrame(tiempos, columns=["start", "name", "duration"])
     df_progs["start"] = pd.to_datetime(df_progs["start"])
     df_progs["duration"] = pd.to_timedelta(df_progs["duration"], unit = "s")    
-    df_progs = df_progs.set_index("start",drop = False)      
+    df_progs = df_progs.set_index("start")     
     return df_progs         
 
 def limpiar_nombre(nombre:str):
@@ -194,48 +195,7 @@ def limpiar_nombre(nombre:str):
         nombre = nombre.split("\\")[1]
     return nombre
 
-def calcular_tiempo_activo(df_prod,filtros):
-    print("calculando tiempo activo")
-    tiempos = []
-    i = 0
-    while i < len(df_prod): 
-        row = df_prod.iloc[i]        
-        if "Active" in row["message"]:
-            start = row.name
-            j = i + 1
-            while j < len(df_prod):
-                msg = df_prod.iloc[j]["message"]                
-                if "Active" not in msg:                   
-                    end = df_prod.iloc[j].name
-                    if (end.date() == start.date()):
-                        tiempos.append((start.date(), (end - start).total_seconds()))                    
-                    else:
-                        end_day = pd.Timestamp.combine(start, pd.Timestamp("23:59:59").time())
-                        tiempos.append((start.date(), (end_day-start).total_seconds()))
-                        dia_actual = (start+timedelta(days=1)).date()
-                        while dia_actual != end.date():
-                            inicio_aux = pd.Timestamp.combine(dia_actual, pd.Timestamp("00:00:00").time())
-                            T = timedelta(days=1)
-                            tiempos.append((inicio_aux.date(),T))
-                            dia_actual = dia_actual + timedelta(days=1)
-                        inicio_aux = pd.Timestamp.combine(dia_actual, pd.Timestamp("00:00:00").time())
-                        T = (end -inicio_aux).total_seconds()
-                        tiempos.append((inicio_aux.date(),T))
 
-                        '''                            
-                        end_day = pd.Timestamp.combine(start.date(),pd.Timestamp("23:59").time())
-                        tiempos.append((start.date(), (end_day - start).total_seconds()))
-                        start_day = pd.Timestamp.combine(end.date(),pd.Timestamp("00:01").time())
-                        tiempos.append((start_day.date(), (end - start_day).total_seconds()))'''
-                    break
-                j += 1
-            i = j
-        else:
-            i += 1
-    df_tiempos = pd.DataFrame(tiempos, columns=["date", "tiempo"])
-    df_tiempos["date"] = pd.to_datetime(df_tiempos["date"])
-    tiempo_activo = agrupar_por_tiempo(df_tiempos, filtros["time_filter"])
-    return tiempo_activo
 
 
 

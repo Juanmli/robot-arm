@@ -16,3 +16,4 @@ pytz==2025.2
 six==1.17.0
 tkcalendar==1.6.1
 tzdata==2025.2
+XlsxWriter==3.2.3
