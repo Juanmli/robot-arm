@@ -22,6 +22,7 @@ sample:dict = {
 
 # Cargar archivos CSV con estructura (timestamp, mensaje)
 def cargar_csv(nombre_archivo): 
+
     path = os.path.join(CARPETA_CSV, nombre_archivo)  
     df = pd.read_csv(path,header=None, names=["timestamp", "message"], on_bad_lines='skip')
     df["timestamp"] = pd.to_datetime(df["timestamp"], format="%m/%d/%Y %I:%M:%S %p", errors="coerce")
@@ -117,7 +118,6 @@ def agrupar_productividad(dataframe,filtros):
     df_agrupado = completar_fechas_faltantes(df_agrupado, filtros)#---------------------------------------------------------------------------ojo acá
 
 
-    print("así sale el df de Agrupar productividad")
     print(df_agrupado)
     
     return df_agrupado

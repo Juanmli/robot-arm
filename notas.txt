@@ -1,2 +1,0 @@
-Tengo que agregar filas para las fechas faltantes cuando se agrupa por fecha. Tienen que estar todos los días. 
-Resolver el problema de mal agrupamiento de horas por programa. 

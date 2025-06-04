@@ -50,8 +50,8 @@ class App(tk.Tk):
         
 
         #radios
-        self.frame_radios = tk.LabelFrame(self.frame_izq, text='Filtro de tiempo')
-        opciones = [('Anual','anual'),('Mensual','mensual'),('Diario','diario'),('Hora', 'hora')]
+        self.frame_radios = tk.LabelFrame(self.frame_izq, text='Group by')
+        opciones = [('Year','anual'),('Month','mensual'),('Day','diario'),('Hour', 'hora')]
         for texto, valor in opciones:
             rb = tk.Radiobutton(self.frame_radios, text=texto, variable=self.filtros['time_filter'], value=valor, command=self.radio_presionado)
             rb.pack(anchor=tk.W)
@@ -60,7 +60,7 @@ class App(tk.Tk):
 
         #checkboxes
 
-        self.frame_checkboxes = tk.LabelFrame(self.frame_izq, text='Mostrar')
+        self.frame_checkboxes = tk.LabelFrame(self.frame_izq, text='Analyze')
         info_to_show = [('Productivity','productivity'),('Errors','errors'), ('Programs','programs'), ('Modes','modes')]
         for clave,valor in info_to_show:
             checkbox = tk.Checkbutton(self.frame_checkboxes, text=clave, variable=self.filtros[valor], onvalue= True, offvalue=False, command=self.graficar)
@@ -70,13 +70,13 @@ class App(tk.Tk):
 
         #Calendars y horas
 
-        self.frame_calendars = tk.LabelFrame(self.frame_izq, text='Fecha y hora')
+        self.frame_calendars = tk.LabelFrame(self.frame_izq, text='Date and time')
         self.frame_horas = tk.Frame(self.frame_calendars)
 
         self.calendario_inicio = Calendar(self.frame_calendars, font='Arial 6')
-        self.label_calendario_inicio = tk.Label(self.frame_calendars, text='Desde')
+        self.label_calendario_inicio = tk.Label(self.frame_calendars, text='From')
         self.calendario_fin = Calendar(self.frame_calendars, font='Arial 6')
-        self.label_calendario_fin = tk.Label(self.frame_calendars,text='Hasta')
+        self.label_calendario_fin = tk.Label(self.frame_calendars,text='To')
         self.calendario_fin.bind("<<CalendarSelected>>", lambda e: self.sincronizar_fechas_si_horario())
         self.calendario_inicio.bind("<<CalendarSelected>>", lambda e: self.sincronizar_fechas_si_horario())
         #hora de inicio
@@ -106,7 +106,7 @@ class App(tk.Tk):
         self.frame_hora_fin.pack(padx=5, pady= 2)
         self.frame_calendars.grid()
 
-        self.boton_fechas = tk.Button(self.frame_calendars,text='Graficar',command=self.graficar)
+        self.boton_fechas = tk.Button(self.frame_calendars,text='Graph',command=self.graficar)
         self.boton_fechas.pack()
 
 
@@ -128,7 +128,7 @@ class App(tk.Tk):
         self.frame_exportar = tk.Frame(self.frame_der)
         self.frame_exportar.pack()
 
-        self.boton_reporte = tk.Button(self.frame_exportar, text='generar_reporte', command=self.reporte)
+        self.boton_reporte = tk.Button(self.frame_exportar, text='Generate report', command=self.reporte)
         self.boton_reporte.pack(side='right')
     
         #Crear diccionario con todos los dfs.    
@@ -148,17 +148,12 @@ class App(tk.Tk):
         if self.filtros["time_filter"].get() == "hora":
             fecha_inicial = self.calendario_inicio.selection_get()
             fecha_final = self.calendario_fin.selection_get()
-
-
-            self.calendario_fin.selection_set(fecha_inicial)
+            #self.calendario_fin.selection_set(fecha_inicial)
         else: 
             pass       
                 # Ajustar los calendarios
             #fecha_ini = self.ajustar_fecha_inicio_a_mes(self.calendario_inicio.get_date())
             #fecha_fin = self.ajustar_fecha_fin_a_mes(self.calendario_fin.get_date())
-
-        
-
             #self.calendario_inicio.selection_set(fecha_ini)
             #self.calendario_fin.selection_set(fecha_fin)
 
